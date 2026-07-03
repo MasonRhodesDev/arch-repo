@@ -30,7 +30,10 @@ jobs:
 
       - name: Download latest release packages from every tracked repo
         env:
-          GH_TOKEN: ${{ github.token }}
+          # github.token only sees this repo — private repos (e.g. hyprstate)
+          # need RELEASE_READ_TOKEN: a fine-grained PAT with contents:read
+          # on the tracked repos.
+          GH_TOKEN: ${{ secrets.RELEASE_READ_TOKEN != '' && secrets.RELEASE_READ_TOKEN || github.token }}
         run: |
           mkdir -p site/x86_64
           missing=""
