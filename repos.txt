@@ -4,7 +4,7 @@ hyprstate
 sni-watcher
 logind-idle-control
 linux-multi-theme-toggle
-wayland-voice-dictation
+hyprland-voice-dictation
 couchcord
 deck-tenant
 greetd_game_mode
