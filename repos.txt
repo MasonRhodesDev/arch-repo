@@ -1,0 +1,10 @@
+# One GitHub repo name (under MasonRhodesDev) per line. The publish workflow
+# pulls *.pkg.tar.zst from each repo's latest GitHub Release.
+hyprstate
+sni-watcher
+logind-idle-control
+linux-multi-theme-toggle
+wayland-voice-dictation
+couchcord
+deck-tenant
+greetd_game_mode

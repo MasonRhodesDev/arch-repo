@@ -1,0 +1,90 @@
+name: Publish pacman repo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+  repository_dispatch:
+    types: [package-released]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tooling
+        run: pacman -Syu --noconfirm --needed git github-cli
+
+      - uses: actions/checkout@v4
+
+      - name: Download latest release packages from every tracked repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/x86_64
+          missing=""
+          while read -r repo; do
+            [ -z "$repo" ] && continue
+            case "$repo" in \#*) continue ;; esac
+            echo "==> $repo"
+            if ! gh release download --repo "MasonRhodesDev/$repo" \
+                 --pattern '*.pkg.tar.zst' --dir site/x86_64; then
+              missing="$missing $repo"
+            fi
+          done < repos.txt
+          [ -n "$missing" ] && echo "::warning::no release/packages yet for:$missing"
+          ls -la site/x86_64
+
+      - name: Build repo database
+        run: |
+          cd site/x86_64
+          if ls *.pkg.tar.zst >/dev/null 2>&1; then
+            repo-add mason.db.tar.gz *.pkg.tar.zst
+            # Pages doesn't serve symlinks — replace them with real files
+            for f in mason.db mason.files; do
+              [ -L "$f" ] && cp --remove-destination "$(readlink "$f")" "$f"
+            done
+          else
+            echo "no packages yet — publishing empty site"
+          fi
+
+      - name: Generate index page
+        run: |
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>mason pacman repo</title>'
+            echo '<h1>[mason] pacman repository</h1><pre>'
+            echo '[mason]'
+            echo 'SigLevel = Optional TrustAll'
+            echo 'Server = https://masonrhodesdev.github.io/arch-repo/x86_64'
+            echo '</pre><h2>Packages</h2><ul>'
+            for p in site/x86_64/*.pkg.tar.zst; do
+              [ -e "$p" ] && echo "<li>$(basename "$p")</li>"
+            done
+            echo '</ul>'
+            echo "<p>Updated $(date -u +%Y-%m-%dT%H:%M:%SZ)</p>"
+          } > site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
