@@ -33,6 +33,37 @@ building in distrobox on the Deck.
   project repo
 - Manually: `gh workflow run publish.yml -R MasonRhodesDev/arch-repo`
 
+```mermaid
+flowchart TD
+    subgraph triggers ["publish.yml triggers"]
+        cron["schedule: every 6 hours"]
+        dispatch["repository_dispatch: package-released"]
+        push["push to main (repos.txt edit)"]
+        manual["workflow_dispatch"]
+    end
+
+    subgraph build ["job: build (archlinux:latest container)"]
+        download["gh release download '*.pkg.tar.zst' for each repo in repos.txt"]
+        repoadd["repo-add mason.db.tar.gz"]
+        copy["replace db symlinks with real files, generate index.html"]
+        artifact["upload-pages-artifact"]
+    end
+
+    subgraph deploy ["job: deploy"]
+        deploypages["actions/deploy-pages"]
+    end
+
+    release["tool repo release.yml"] -->|"POST /dispatches (ARCH_REPO_TOKEN)"| dispatch
+    releases["GitHub Releases (latest per tracked repo)"] -->|"GH_TOKEN: RELEASE_READ_TOKEN for private repos"| download
+    cron --> download
+    dispatch --> download
+    push --> download
+    manual --> download
+    download --> repoadd --> copy --> artifact
+    artifact --> deploypages
+    deploypages -->|"masonrhodesdev.github.io/arch-repo/x86_64"| client["pacman -Syu with [mason] stanza (packages unsigned)"]
+```
+
 ## Adding a package
 
 Append the repo name to `repos.txt` and push — the workflow also runs on push
