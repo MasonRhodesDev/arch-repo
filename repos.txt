@@ -5,6 +5,7 @@ sni-watcher
 logind-idle-control
 linux-multi-theme-toggle
 hyprland-voice-dictation
+waybar-workspace-buttons
 couchcord
 deck-tenant
 greetd_game_mode
