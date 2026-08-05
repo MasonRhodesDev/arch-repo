@@ -10,3 +10,4 @@ deck-tenant
 greetd_game_mode
 hypr-DE
 waybar-workspace-buttons
+vigil
