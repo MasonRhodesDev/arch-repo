@@ -1,6 +1,7 @@
 # One GitHub repo name (under MasonRhodesDev) per line. The publish workflow
 # pulls *.pkg.tar.zst from each repo's latest GitHub Release.
 hyprstate
+hyprstate-gui
 sni-watcher
 logind-idle-control
 linux-multi-theme-toggle
