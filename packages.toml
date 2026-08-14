@@ -1,0 +1,50 @@
+schema = 1
+owner = "MasonRhodesDev"
+
+[[release]]
+repository = "hyprstate"
+packages = ["hyprstate", "hyprstate-debug"]
+
+[[release]]
+repository = "hyprstate-gui"
+packages = ["hyprstate-gui", "hyprstate-gui-debug"]
+
+[[release]]
+repository = "sni-watcher"
+packages = ["sni-watcher", "sni-watcher-debug"]
+
+[[release]]
+repository = "logind-idle-control"
+packages = ["logind-idle-control", "logind-idle-control-debug"]
+
+[[release]]
+repository = "linux-multi-theme-toggle"
+packages = ["lmtt", "lmtt-debug"]
+
+[[release]]
+repository = "hyprland-voice-dictation"
+packages = ["hyprland-voice-dictation", "hyprland-voice-dictation-debug"]
+
+[[release]]
+repository = "couchcord"
+packages = ["couchcord", "couchcord-debug"]
+
+[[release]]
+repository = "deck-tenant"
+packages = ["deck-tenant"]
+
+[[release]]
+repository = "greetd_game_mode"
+packages = ["game-mode", "game-mode-debug"]
+
+[[release]]
+repository = "hypr-DE"
+packages = ["hypr-de", "hypr-de-gaming"]
+
+[[release]]
+repository = "waybar-workspace-buttons"
+packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug"]
+
+[[release]]
+repository = "vigil"
+packages = ["vigil", "vigil-debug"]

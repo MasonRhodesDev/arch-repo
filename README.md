@@ -1,17 +1,31 @@
 # arch-repo
 
 Self-hosted pacman repository for MasonRhodesDev packages, served from GitHub
-Pages. The publish workflow collects the latest GitHub Release `.pkg.tar.zst`
-from every repo listed in [`repos.txt`](repos.txt), runs `repo-add`, and
-deploys the result.
+Pages. The publish workflow resolves every release in
+[`packages.toml`](packages.toml), requires the exact declared package set and
+release version, signs the packages and repository database, and deploys the
+result atomically.
 
 ## Use it
 
-Add to `/etc/pacman.conf`:
+Import and locally trust the dedicated repository key:
+
+```bash
+curl -fsSLo /tmp/mason-repo.asc \
+  https://masonrhodesdev.github.io/arch-repo/mason-repo.asc
+test "$(gpg --show-keys --with-colons /tmp/mason-repo.asc |
+  awk -F: '$1 == "fpr" { print $10; exit }')" = \
+  "41450EEF8CEE7AB8CD3896221284404A6B70485C"
+sudo pacman-key --add /tmp/mason-repo.asc
+sudo pacman-key --lsign-key 41450EEF8CEE7AB8CD3896221284404A6B70485C
+rm /tmp/mason-repo.asc
+```
+
+Then add to `/etc/pacman.conf`:
 
 ```ini
 [mason]
-SigLevel = Optional TrustAll
+SigLevel = Required DatabaseRequired
 Server = https://masonrhodesdev.github.io/arch-repo/x86_64
 ```
 
@@ -38,13 +52,13 @@ flowchart TD
     subgraph triggers ["publish.yml triggers"]
         cron["schedule: every 6 hours"]
         dispatch["repository_dispatch: package-released"]
-        push["push to main (repos.txt edit)"]
+        push["push to main (packages.toml or workflow edit)"]
         manual["workflow_dispatch"]
     end
 
     subgraph build ["job: build (archlinux:latest container)"]
-        download["gh release download '*.pkg.tar.zst' for each repo in repos.txt"]
-        repoadd["repo-add mason.db.tar.gz"]
+        download["resolve packages.toml; download and validate every expected package/version"]
+        sign["sign packages + manifest; repo-add --sign --include-sigs"]
         copy["replace db symlinks with real files, generate index.html"]
         artifact["upload-pages-artifact"]
     end
@@ -59,15 +73,18 @@ flowchart TD
     dispatch --> download
     push --> download
     manual --> download
-    download --> repoadd --> copy --> artifact
+    download --> sign --> copy --> artifact
     artifact --> deploypages
-    deploypages -->|"masonrhodesdev.github.io/arch-repo/x86_64"| client["pacman -Syu with [mason] stanza (packages unsigned)"]
+    deploypages -->|"masonrhodesdev.github.io/arch-repo/x86_64"| client["pacman -Syu with [mason] stanza (required package + database signatures)"]
 ```
 
 ## Adding a package
 
-Append the repo name to `repos.txt` and push — the workflow also runs on push
-to main.
+Add a `[[release]]` entry to `packages.toml`, including every expected package
+name. Publication fails instead of serving a partial, stale, unexpected, or
+unsigned package set.
 
-Packages are unsigned (`SigLevel = Optional TrustAll`); package signing with a
-detached GPG key is a possible future hardening step.
+The signing fingerprint is committed in `signing-fingerprint.txt`. The
+private CI-only key is stored only as the `PACKAGE_SIGNING_KEY` Actions secret
+and expires in August 2028; rotate it before expiry and publish a migration
+notice before changing the trusted fingerprint.
