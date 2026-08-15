@@ -42,6 +42,10 @@ repository = "hypr-DE"
 packages = ["hypr-de", "hypr-de-gaming"]
 
 [[release]]
+repository = "hypr-de-extras"
+packages = ["overskride", "overskride-debug"]
+
+[[release]]
 repository = "waybar-workspace-buttons"
 packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug"]
 
