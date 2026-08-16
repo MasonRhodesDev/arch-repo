@@ -36,6 +36,13 @@ def release_version(package_version: str) -> str:
     return value.split(":", 1)[-1]
 
 
+def package_matches_tag(package_version: str, tag: str) -> bool:
+    expected = tag[1:]
+    # v$pkgver-$pkgrel rebuilds (e.g. overskride) store that same string in
+    # .PKGINFO pkgver. v$pkgver releases compare after dropping Arch pkgrel.
+    return package_version == expected or release_version(package_version) == expected
+
+
 def validate_registry(document: dict) -> None:
     if document.get("schema") != 1:
         raise RuntimeError("packages.toml must use schema = 1")
@@ -75,7 +82,6 @@ def collect(manifest: Path, output: Path) -> dict:
         tag = release_document["tag_name"]
         if not tag.startswith("v") or len(tag) == 1:
             raise RuntimeError(f"{repository} latest tag is not v-prefixed: {tag}")
-        expected_version = tag[1:]
         package_assets = [
             asset["name"]
             for asset in release_document.get("assets", [])
@@ -108,7 +114,7 @@ def collect(manifest: Path, output: Path) -> dict:
                 raise RuntimeError(
                     f"{repository} {tag} contains duplicate package {package}"
                 )
-            if release_version(package_version) != expected_version:
+            if not package_matches_tag(package_version, tag):
                 raise RuntimeError(
                     f"{path.name} version {package_version} does not match {tag}"
                 )
