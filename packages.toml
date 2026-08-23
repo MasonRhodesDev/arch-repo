@@ -6,8 +6,8 @@ repository = "hyprstate"
 packages = ["hyprstate", "hyprstate-debug"]
 
 [[release]]
-repository = "hyprstate-gui"
-packages = ["hyprstate-gui", "hyprstate-gui-debug"]
+repository = "dials"
+packages = ["dials", "dials-debug"]
 
 [[release]]
 repository = "sni-watcher"
@@ -22,8 +22,8 @@ repository = "linux-multi-theme-toggle"
 packages = ["lmtt", "lmtt-debug"]
 
 [[release]]
-repository = "hyprland-voice-dictation"
-packages = ["hyprland-voice-dictation", "hyprland-voice-dictation-debug"]
+repository = "wayland-voice-dictation"
+packages = ["wayland-voice-dictation", "wayland-voice-dictation-debug"]
 
 [[release]]
 repository = "couchcord"
