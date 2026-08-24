@@ -52,3 +52,9 @@ packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug", "hyprl
 [[release]]
 repository = "vigil"
 packages = ["vigil", "vigil-debug"]
+
+# The hyprland-git channel: lockstep pair from this repo's own git-builds
+# releases (see git-builds.yml). Version = git describe of hyprwm main.
+[[release]]
+repository = "arch-repo"
+packages = ["hyprland-git", "hyprland-workspace-zones-git"]
