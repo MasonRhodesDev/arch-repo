@@ -17,12 +17,12 @@ url="https://github.com/hyprwm/Hyprland"
 license=('BSD-3-Clause')
 depends=(aquamarine cairo gcc-libs glib2 glibc glslang hyprcursor hyprgraphics
          hyprland-guiutils hyprlang hyprutils hyprwayland-scanner hyprwire
-         lcms2 libdisplay-info libdrm libglvnd libinput libliftoff libx11
-         libxcb libxcomposite libxcursor libxfixes libxkbcommon libxrender
-         lua mesa muparser opengl-driver pango pixman re2 seatd systemd-libs
-         tomlplusplus util-linux-libs wayland wayland-protocols xcb-proto
-         xcb-util xcb-util-errors xcb-util-image xcb-util-keysyms
-         xcb-util-renderutil xcb-util-wm xorg-xwayland)
+         lcms2 libcanberra libdisplay-info libdrm libglvnd libinput libliftoff
+         libx11 libxcb libxcomposite libxcursor libxfixes libxkbcommon
+         libxrender lua mesa muparser opengl-driver pango pixman polkit re2
+         sdbus-cpp seatd systemd-libs tomlplusplus util-linux-libs wayland
+         wayland-protocols xcb-proto xcb-util xcb-util-errors xcb-util-image
+         xcb-util-keysyms xcb-util-renderutil xcb-util-wm xorg-xwayland)
 makedepends=('cmake' 'git' 'glaze' 'hyprland-protocols' 'meson' 'ninja' 'xorgproto')
 provides=("hyprland" "wayland-compositor")
 conflicts=('hyprland')
