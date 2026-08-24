@@ -39,6 +39,21 @@ The same repo works with deck-tenant's rootless pacman root — add the same
 `pacman --root ~/.local/share/deck-pkgs` and update from there. No more
 building in distrobox on the Deck.
 
+## hyprland-git channel
+
+`git-builds.yml` builds a lockstep pair every 6 hours (skipping when
+hyprwm/Hyprland main hasn't moved): **hyprland-git** (upstream main against
+extra/'s stable hypr* libraries — when main starts needing an unreleased
+library the build fails visibly; extend `pkgbuilds/hyprland-git` then) and
+**hyprland-workspace-zones-git** (the workspace-zones plugin built in the
+same job, so its API hash matches that exact compositor build, pinned
+`hyprland-git=<version>`). The pair is published as a `v<pkgver>` release on
+this repo — `packages.toml` tracks it like any other project — and old git
+releases are pruned to the newest 3. Install with
+`pacman -S hyprland-git hyprland-workspace-zones-git`; the plugin
+provides/conflicts the stable `hyprland-workspace-zones`, so
+waybar-workspace-buttons' dependency stays satisfied.
+
 ## Refresh cadence
 
 - Every 6 hours on schedule

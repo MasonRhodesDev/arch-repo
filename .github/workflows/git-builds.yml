@@ -1,0 +1,115 @@
+name: Build hyprland-git channel
+
+# Lockstep -git pair for the [mason] repo: hyprland-git (upstream main,
+# built against extra/'s stable hypr* libs) and hyprland-workspace-zones-git
+# (the plugin, built in the same job so its API hash matches that exact
+# compositor build, with depends=hyprland-git=<version>).
+#
+# Every 6h: skip when upstream main hasn't moved since the last published
+# pair; otherwise build both, publish them as a GitHub release tagged
+# v<pkgver> on this repo (packages.toml tracks releases/latest), prune old
+# git releases, and kick the pacman-repo publish.
+
+on:
+  schedule:
+    - cron: '30 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: git-builds
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest@sha256:b0deabeb3d283da2c7f7dbf0eea051b7b2cd0554e0b737cc457fd21683bdcdd1
+    steps:
+      - name: Install build tooling
+        run: pacman -Syu --noconfirm --needed base-devel git sudo github-cli
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Trust the checkout (container runs as root)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Skip when upstream main has not moved
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          upstream=$(gh api repos/hyprwm/Hyprland/commits/main --jq .sha | cut -c1-7)
+          last=$(gh release list --repo "$GITHUB_REPOSITORY" \
+                   --json tagName --jq '.[].tagName' |
+                 grep -Em1 '^v[0-9].*\.r[0-9]+\.g[0-9a-f]+$' || true)
+          built=""
+          case "$last" in *".g"*) built="${last##*.g}" ;; esac
+          {
+            echo "## hyprland-git channel"
+            echo
+            echo "- upstream main: \`$upstream\`"
+            echo "- last built:    \`${built:-none}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$built" ] && [ "$built" = "$upstream" ]; then
+            echo "up to date — skipping" >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare unprivileged builder
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+          chown -R builder: "$GITHUB_WORKSPACE"
+
+      - name: Build hyprland-git
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          cd pkgbuilds/hyprland-git
+          su builder -c 'makepkg -s --noconfirm'
+
+      - name: Install hyprland-git into the build root
+        if: steps.gate.outputs.skip == 'false'
+        run: pacman -U --noconfirm pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst
+
+      - name: Build hyprland-workspace-zones-git (lockstep)
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          cd pkgbuilds/hyprland-workspace-zones-git
+          su builder -c 'makepkg -s --noconfirm'
+
+      - name: Publish release and prune old git releases
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(pacman -Q hyprland-git | cut -d' ' -f2 | cut -d- -f1)
+          tag="v$version"
+          commit="${version##*.g}"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+            --title "hyprland-git $version" \
+            --notes "Lockstep hyprland-git + hyprland-workspace-zones-git pair built from hyprwm/Hyprland@$commit against extra/'s stable hypr* libraries." \
+            pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst \
+            pkgbuilds/hyprland-workspace-zones-git/hyprland-workspace-zones-git-*.pkg.tar.zst
+          # Keep the 3 newest git releases; prune the rest (tags too).
+          gh release list --repo "$GITHUB_REPOSITORY" \
+            --json tagName --jq '.[].tagName' |
+            grep -E '^v[0-9].*\.r[0-9]+\.g[0-9a-f]+$' | tail -n +4 |
+            while read -r old; do
+              gh release delete "$old" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+            done
+          {
+            echo "published \`$tag\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Kick pacman-repo publish
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish.yml --repo "$GITHUB_REPOSITORY"

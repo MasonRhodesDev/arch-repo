@@ -1,0 +1,55 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+#
+# hyprland main, built against extra/'s STABLE hypr* libraries (deps mirror
+# extra/hyprland, not the AUR -git package's full -git lib stack). When main
+# starts requiring an unreleased library the build fails visibly in the
+# git-builds workflow — extend the set then, deliberately.
+#
+# Built exclusively by .github/workflows/git-builds.yml in lockstep with
+# hyprland-workspace-zones-git (same job → matching plugin API hash).
+
+pkgname=hyprland-git
+pkgver=0
+pkgrel=1
+pkgdesc="Hyprland compositor built from upstream main (lockstep [mason] git channel)"
+arch=('x86_64')
+url="https://github.com/hyprwm/Hyprland"
+license=('BSD-3-Clause')
+depends=(aquamarine cairo gcc-libs glib2 glibc glslang hyprcursor hyprgraphics
+         hyprland-guiutils hyprlang hyprutils hyprwayland-scanner hyprwire
+         lcms2 libdisplay-info libdrm libglvnd libinput libliftoff libx11
+         libxcb libxcomposite libxcursor libxfixes libxkbcommon libxrender
+         lua mesa muparser opengl-driver pango pixman re2 seatd systemd-libs
+         tomlplusplus util-linux-libs wayland wayland-protocols xcb-proto
+         xcb-util xcb-util-errors xcb-util-image xcb-util-keysyms
+         xcb-util-renderutil xcb-util-wm xorg-xwayland)
+makedepends=('cmake' 'git' 'glaze' 'hyprland-protocols' 'meson' 'ninja' 'xorgproto')
+provides=("hyprland" "wayland-compositor")
+conflicts=('hyprland')
+options=('!debug')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd Hyprland
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/-\([0-9]*\)-g/.r\1.g/'
+}
+
+prepare() {
+  cd Hyprland
+  git submodule update --init --recursive
+}
+
+build() {
+  cd Hyprland
+  make release PREFIX=/usr
+}
+
+package() {
+  # Versioned provides so 'hyprland>=X' deps resolve against this build.
+  provides=("hyprland=${pkgver%%.r*}" "wayland-compositor")
+  cd Hyprland
+  make DESTDIR="$pkgdir" install
+  rm -f "$pkgdir/usr/include/hyprland/src/version.h.in"
+  install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

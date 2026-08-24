@@ -1,0 +1,45 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+#
+# workspace-zones plugin built against hyprland-git — the plugin's API-hash
+# guard requires the EXACT compositor build, so this package:
+#   - takes its pkgver from the installed hyprland-git (lockstep identity),
+#   - depends on that exact hyprland-git version,
+#   - provides/conflicts the stable hyprland-workspace-zones so it satisfies
+#     waybar-workspace-buttons' dependency on -git machines.
+#
+# Built exclusively by .github/workflows/git-builds.yml, in the same job
+# that builds (and installs) hyprland-git.
+
+pkgname=hyprland-workspace-zones-git
+pkgver=0
+pkgrel=1
+pkgdesc="Per-workspace special zones plugin, lockstep-built against hyprland-git"
+arch=('x86_64')
+url="https://github.com/MasonRhodesDev/waybar-workspace-buttons"
+license=('MIT')
+makedepends=('git' 'meson' 'ninja' 'hyprland-git' 'pixman' 'libdrm')
+provides=('hyprland-workspace-zones')
+conflicts=('hyprland-workspace-zones')
+options=('!debug')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  # Lockstep identity: version by the compositor this build is locked to.
+  pacman -Q hyprland-git | cut -d' ' -f2 | cut -d- -f1
+}
+
+build() {
+  cd waybar-workspace-buttons
+  arch-meson plugin plugin/build
+  meson compile -C plugin/build
+}
+
+package() {
+  local _hlver
+  _hlver=$(pacman -Q hyprland-git | cut -d' ' -f2 | cut -d- -f1)
+  depends=("hyprland-git=$_hlver")
+  cd waybar-workspace-buttons
+  meson install -C plugin/build --destdir "$pkgdir"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

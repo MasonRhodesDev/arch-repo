@@ -47,7 +47,7 @@ packages = ["overskride", "overskride-debug"]
 
 [[release]]
 repository = "waybar-workspace-buttons"
-packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug"]
+packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug", "hyprland-workspace-zones"]
 
 [[release]]
 repository = "vigil"
