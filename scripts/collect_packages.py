@@ -18,7 +18,7 @@ def run(arguments: list[str]) -> str:
     return process.stdout
 
 
-def package_metadata(path: Path) -> tuple[str, str]:
+def package_metadata(path: Path) -> tuple[str, str, str]:
     content = run(["bsdtar", "-xOf", str(path), ".PKGINFO"])
     values = {}
     for line in content.splitlines():
@@ -26,9 +26,20 @@ def package_metadata(path: Path) -> tuple[str, str]:
             key, value = line.split(" = ", 1)
             values.setdefault(key, value)
     try:
-        return values["pkgname"], values["pkgver"]
+        return values["pkgname"], values["pkgver"], values["arch"]
     except KeyError as error:
         raise RuntimeError(f"{path.name} has incomplete .PKGINFO") from error
+
+
+def index_key(package: str, architecture: str) -> tuple[str, str]:
+    """Identity of a built package within one release.
+
+    A release carries one file per architecture a package is built for, so the
+    name alone is not unique: hyprstate v2.7.4-2 ships both an x86_64 and an
+    aarch64 build. An arch=any package appears once and is served from every
+    architecture's database, so it keys on "any".
+    """
+    return package, architecture
 
 
 def release_version(package_version: str) -> str:
@@ -109,28 +120,34 @@ def collect(manifest: Path, output: Path) -> dict:
         actual_packages = {}
         package_rows = []
         for path in downloaded:
-            package, package_version = package_metadata(path)
-            if package in actual_packages:
+            package, package_version, architecture = package_metadata(path)
+            key = index_key(package, architecture)
+            if key in actual_packages:
                 raise RuntimeError(
-                    f"{repository} {tag} contains duplicate package {package}"
+                    f"{repository} {tag} contains duplicate package {package} "
+                    f"for {architecture}"
                 )
             if not package_matches_tag(package_version, tag):
                 raise RuntimeError(
                     f"{path.name} version {package_version} does not match {tag}"
                 )
-            actual_packages[package] = path.name
+            actual_packages[key] = path.name
             package_rows.append(
                 {
                     "name": package,
                     "version": package_version,
+                    "arch": architecture,
                     "file": path.name,
                     "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                 }
             )
 
-        if set(actual_packages) != expected_packages:
-            missing = sorted(expected_packages - set(actual_packages))
-            unexpected = sorted(set(actual_packages) - expected_packages)
+        # The expected set names packages, not builds: a package present for
+        # several architectures satisfies its entry once.
+        actual_names = {name for name, _ in actual_packages}
+        if actual_names != expected_packages:
+            missing = sorted(expected_packages - actual_names)
+            unexpected = sorted(actual_names - expected_packages)
             raise RuntimeError(
                 f"{repository} {tag} package mismatch; "
                 f"missing={missing}, unexpected={unexpected}"
@@ -139,7 +156,9 @@ def collect(manifest: Path, output: Path) -> dict:
             {
                 "repository": repository,
                 "tag": tag,
-                "packages": sorted(package_rows, key=lambda row: row["name"]),
+                "packages": sorted(
+                    package_rows, key=lambda row: (row["name"], row["arch"])
+                ),
             }
         )
 
