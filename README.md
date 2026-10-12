@@ -26,8 +26,15 @@ Then add to `/etc/pacman.conf`:
 ```ini
 [mason]
 SigLevel = Required DatabaseRequired
-Server = https://masonrhodesdev.github.io/arch-repo/x86_64
+Server = https://masonrhodesdev.github.io/arch-repo/$arch
 ```
+
+`$arch` is substituted by pacman from its `Architecture` setting, so the same
+stanza works on x86_64 and aarch64. The repository serves one directory per
+architecture: `x86_64` holds the x86_64 builds, `aarch64` holds the aarch64
+builds, and `arch=any` packages appear in both. An architecture with no
+packages at all gets no directory, so pointing a client at it fails loudly
+rather than silently serving nothing.
 
 Then `sudo pacman -Syu` and install packages normally (`sudo pacman -S
 hyprstate sni-watcher ...`).
@@ -90,7 +97,7 @@ flowchart TD
     manual --> download
     download --> sign --> copy --> artifact
     artifact --> deploypages
-    deploypages -->|"masonrhodesdev.github.io/arch-repo/x86_64"| client["pacman -Syu with [mason] stanza (required package + database signatures)"]
+    deploypages -->|"masonrhodesdev.github.io/arch-repo/$arch"| client["pacman -Syu with [mason] stanza (required package + database signatures)"]
 ```
 
 ## Adding a package

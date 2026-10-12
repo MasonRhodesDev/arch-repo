@@ -36,6 +36,25 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_READ_TOKEN != '' && secrets.RELEASE_READ_TOKEN || github.token }}
         run: python scripts/collect_packages.py --output site/x86_64
 
+      - name: Partition packages by architecture
+        run: |
+          # Releases carry per-architecture builds alongside arch=any packages.
+          # Serve one pacman directory per architecture; an arch=any package
+          # belongs in every one of them, so it is copied rather than moved.
+          shopt -s nullglob
+          mkdir -p site/aarch64
+          for package in site/x86_64/*-aarch64.pkg.tar.zst; do
+            mv "$package" site/aarch64/
+          done
+          for package in site/x86_64/*-any.pkg.tar.zst; do
+            cp "$package" site/aarch64/
+          done
+          # Nothing at all for aarch64 (not even arch=any) -> no directory.
+          rmdir site/aarch64 2>/dev/null || true
+          for dir in site/*/; do
+            echo "${dir%/}: $(ls "$dir" | wc -l) packages"
+          done
+
       - name: Sign packages and build signed repository database
         env:
           PACKAGE_SIGNING_KEY: ${{ secrets.PACKAGE_SIGNING_KEY }}
@@ -50,20 +69,29 @@ jobs:
             echo "::error::imported key does not match signing-fingerprint.txt"
             exit 1
           fi
-          for package in site/x86_64/*.pkg.tar.zst; do
-            gpg --batch --yes --local-user "$expected" --detach-sign "$package"
+          shopt -s nullglob
+          # One signed database per architecture directory. An arch=any package
+          # is signed once per directory it appears in, because each database
+          # needs the detached signature sitting beside the package file.
+          for dir in site/*/; do
+            dir=${dir%/}
+            for package in "$dir"/*.pkg.tar.zst; do
+              gpg --batch --yes --local-user "$expected" --detach-sign "$package"
+            done
+            (
+              cd "$dir"
+              repo-add --include-sigs --sign --key "$expected" \
+                mason.db.tar.gz *.pkg.tar.zst
+              # Pages doesn't serve symlinks — replace them with real files.
+              for file in mason.db mason.files mason.db.sig mason.files.sig; do
+                if [ -L "$file" ]; then
+                  cp --remove-destination "$(readlink "$file")" "$file"
+                fi
+              done
+            )
           done
-          cd site/x86_64
-          repo-add --include-sigs --sign --key "$expected" \
-            mason.db.tar.gz *.pkg.tar.zst
-          # Pages doesn't serve symlinks — replace them with real files.
-          for file in mason.db mason.files mason.db.sig mason.files.sig; do
-            [ -L "$file" ] &&
-              cp --remove-destination "$(readlink "$file")" "$file"
-          done
-          cd ..
-          cp ../keys/mason-repo.asc .
-          gpg --batch --yes --local-user "$expected" --detach-sign manifest.json
+          cp keys/mason-repo.asc site/
+          gpg --batch --yes --local-user "$expected" --detach-sign site/manifest.json
 
       - name: Generate index page
         run: |
@@ -72,14 +100,18 @@ jobs:
             echo '<h1>[mason] pacman repository</h1><pre>'
             echo '[mason]'
             echo 'SigLevel = Required DatabaseRequired'
-            echo 'Server = https://masonrhodesdev.github.io/arch-repo/x86_64'
+            # $arch is substituted by pacman from its Architecture setting, so
+            # one Server line serves x86_64 and aarch64 clients alike.
+            echo 'Server = https://masonrhodesdev.github.io/arch-repo/$arch'
             echo '</pre>'
             echo '<p><a href="mason-repo.asc">Signing key</a> · <a href="manifest.json">Validated manifest</a></p>'
-            echo '<h2>Packages</h2><ul>'
-            for p in site/x86_64/*.pkg.tar.zst; do
-              [ -e "$p" ] && echo "<li>$(basename "$p")</li>"
+            for dir in site/*/; do
+              echo "<h2>$(basename "${dir%/}")</h2><ul>"
+              for p in "$dir"*.pkg.tar.zst; do
+                [ -e "$p" ] && echo "<li>$(basename "$p")</li>"
+              done
+              echo '</ul>'
             done
-            echo '</ul>'
             echo "<p>Updated $(date -u +%Y-%m-%dT%H:%M:%SZ)</p>"
           } > site/index.html
 
