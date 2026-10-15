@@ -57,6 +57,10 @@ packages = ["bt-stale-bond-guard"]
 repository = "vigil"
 packages = ["vigil", "vigil-debug"]
 
+[[release]]
+repository = "hyprhands"
+packages = ["hyprhands"]
+
 # The hyprland-git channel: lockstep pair from this repo's own git-builds
 # releases (see git-builds.yml). Version = git describe of hyprwm main.
 [[release]]
