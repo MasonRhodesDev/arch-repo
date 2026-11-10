@@ -5,8 +5,7 @@
 # starts requiring an unreleased library the build fails visibly in the
 # git-builds workflow — extend the set then, deliberately.
 #
-# Built exclusively by .github/workflows/git-builds.yml in lockstep with
-# hyprland-workspace-zones-git (same job → matching plugin API hash).
+# Built exclusively by .github/workflows/git-builds.yml.
 
 pkgname=hyprland-git
 pkgver=0

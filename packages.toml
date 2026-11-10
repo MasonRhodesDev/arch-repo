@@ -47,7 +47,7 @@ packages = ["overskride", "overskride-debug"]
 
 [[release]]
 repository = "waybar-workspace-buttons"
-packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug", "hyprland-workspace-zones"]
+packages = ["waybar-workspace-buttons", "waybar-workspace-buttons-debug"]
 
 [[release]]
 repository = "bt-stale-bond-guard"
@@ -57,8 +57,8 @@ packages = ["bt-stale-bond-guard"]
 repository = "vigil"
 packages = ["vigil", "vigil-debug"]
 
-# The hyprland-git channel: lockstep pair from this repo's own git-builds
-# releases (see git-builds.yml). Version = git describe of hyprwm main.
+# The hyprland-git channel, from this repo's own git-builds releases (see
+# git-builds.yml). Version = git describe of hyprwm main.
 [[release]]
 repository = "arch-repo"
-packages = ["hyprland-git", "hyprland-workspace-zones-git"]
+packages = ["hyprland-git"]
