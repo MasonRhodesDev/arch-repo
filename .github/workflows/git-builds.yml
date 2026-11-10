@@ -1,14 +1,17 @@
 name: Build hyprland-git channel
 
-# Lockstep -git pair for the [mason] repo: hyprland-git (upstream main,
-# built against extra/'s stable hypr* libs) and hyprland-workspace-zones-git
-# (the plugin, built in the same job so its API hash matches that exact
-# compositor build, with depends=hyprland-git=<version>).
+# hyprland-git for the [mason] repo: upstream main, built against extra/'s
+# stable hypr* libs.
 #
 # Every 6h: skip when upstream main hasn't moved since the last published
-# pair; otherwise build both, publish them as a GitHub release tagged
-# v<pkgver> on this repo (packages.toml tracks releases/latest), prune old
-# git releases, and kick the pacman-repo publish.
+# build; otherwise build it, install it into the build root to prove the
+# package installs, publish it as a GitHub release tagged v<pkgver> on this
+# repo (packages.toml tracks releases/latest), prune old git releases, and
+# kick the pacman-repo publish.
+#
+# Until waybar-workspace-buttons 1.5.0 this job also built the
+# workspace-zones plugin in lockstep. Zones are Lua config now, so nothing
+# is built against the compositor.
 
 on:
   schedule:
@@ -77,12 +80,6 @@ jobs:
         if: steps.gate.outputs.skip == 'false'
         run: pacman -U --noconfirm pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst
 
-      - name: Build hyprland-workspace-zones-git (lockstep)
-        if: steps.gate.outputs.skip == 'false'
-        run: |
-          cd pkgbuilds/hyprland-workspace-zones-git
-          su builder -c 'makepkg -s --noconfirm'
-
       - name: Publish release and prune old git releases
         if: steps.gate.outputs.skip == 'false'
         env:
@@ -94,9 +91,8 @@ jobs:
           commit="${version##*.g}"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
             --title "hyprland-git $version" \
-            --notes "Lockstep hyprland-git + hyprland-workspace-zones-git pair built from hyprwm/Hyprland@$commit against extra/'s stable hypr* libraries." \
-            pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst \
-            pkgbuilds/hyprland-workspace-zones-git/hyprland-workspace-zones-git-*.pkg.tar.zst
+            --notes "hyprland-git built from hyprwm/Hyprland@$commit against extra/'s stable hypr* libraries." \
+            pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst
           # Keep the 3 newest git releases; prune the rest (tags too).
           gh release list --repo "$GITHUB_REPOSITORY" \
             --json tagName --jq '.[].tagName' |

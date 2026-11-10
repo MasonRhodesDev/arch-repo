@@ -48,18 +48,18 @@ building in distrobox on the Deck.
 
 ## hyprland-git channel
 
-`git-builds.yml` builds a lockstep pair every 6 hours (skipping when
-hyprwm/Hyprland main hasn't moved): **hyprland-git** (upstream main against
-extra/'s stable hypr* libraries — when main starts needing an unreleased
-library the build fails visibly; extend `pkgbuilds/hyprland-git` then) and
-**hyprland-workspace-zones-git** (the workspace-zones plugin built in the
-same job, so its API hash matches that exact compositor build, pinned
-`hyprland-git=<version>`). The pair is published as a `v<pkgver>` release on
-this repo — `packages.toml` tracks it like any other project — and old git
-releases are pruned to the newest 3. Install with
-`pacman -S hyprland-git hyprland-workspace-zones-git`; the plugin
-provides/conflicts the stable `hyprland-workspace-zones`, so
-waybar-workspace-buttons' dependency stays satisfied.
+`git-builds.yml` builds **hyprland-git** every 6 hours (skipping when
+hyprwm/Hyprland main hasn't moved): upstream main against extra/'s stable
+hypr* libraries. When main starts needing an unreleased library the build
+fails visibly; extend `pkgbuilds/hyprland-git` then. The job installs the
+package into its build root before publishing, so a package that cannot
+install never ships. It is published as a `v<pkgver>` release on this repo,
+`packages.toml` tracks it like any other project, and old git releases are
+pruned to the newest 3. Install with `pacman -S hyprland-git`.
+
+The workspace-zones plugin used to be built here in lockstep as
+`hyprland-workspace-zones-git`. waybar-workspace-buttons 1.5.0 retired the
+plugin (zones are Lua config), and that package replaces it.
 
 ## Refresh cadence
 
