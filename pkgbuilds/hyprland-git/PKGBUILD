@@ -49,7 +49,11 @@ package() {
   # Versioned provides so 'hyprland>=X' deps resolve against this build.
   provides=("hyprland=${pkgver%%.r*}" "wayland-compositor")
   cd Hyprland
-  make DESTDIR="$pkgdir" install
+  # PREFIX has to be repeated here. Upstream's install target re-runs the
+  # cmake configure step, and without PREFIX it reconfigures for /usr/local,
+  # rebuilds, and installs there. /usr/local/share/man then conflicts with
+  # the symlink the filesystem package owns, and the package cannot install.
+  make PREFIX=/usr DESTDIR="$pkgdir" install
   rm -f "$pkgdir/usr/include/hyprland/src/version.h.in"
   install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
 }
