@@ -1,18 +1,5 @@
 name: Build hyprland-git channel
 
-# hyprland-git for the [mason] repo: upstream main, built against extra/'s
-# stable hypr* libs.
-#
-# Every 6h: skip when upstream main hasn't moved since the last published
-# build; otherwise build it, install it into the build root to prove the
-# package installs, publish it as a GitHub release tagged v<pkgver> on this
-# repo (packages.toml tracks releases/latest), prune old git releases, and
-# kick the pacman-repo publish.
-#
-# Until waybar-workspace-buttons 1.5.0 this job also built the
-# workspace-zones plugin in lockstep. Zones are Lua config now, so nothing
-# is built against the compositor.
-
 on:
   schedule:
     - cron: '30 */6 * * *'
@@ -93,7 +80,6 @@ jobs:
             --title "hyprland-git $version" \
             --notes "hyprland-git built from hyprwm/Hyprland@$commit against extra/'s stable hypr* libraries." \
             pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst
-          # Keep the 3 newest git releases; prune the rest (tags too).
           gh release list --repo "$GITHUB_REPOSITORY" \
             --json tagName --jq '.[].tagName' |
             grep -E '^v[0-9].*\.r[0-9]+\.g[0-9a-f]+$' | tail -n +4 |

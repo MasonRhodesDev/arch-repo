@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Collect and validate the complete package set from latest releases."""
 
 import argparse
 import hashlib
@@ -32,13 +31,6 @@ def package_metadata(path: Path) -> tuple[str, str, str]:
 
 
 def index_key(package: str, architecture: str) -> tuple[str, str]:
-    """Identity of a built package within one release.
-
-    A release carries one file per architecture a package is built for, so the
-    name alone is not unique: hyprstate v2.7.4-2 ships both an x86_64 and an
-    aarch64 build. An arch=any package appears once and is served from every
-    architecture's database, so it keys on "any".
-    """
     return package, architecture
 
 
@@ -49,8 +41,6 @@ def release_version(package_version: str) -> str:
 
 def package_matches_tag(package_version: str, tag: str) -> bool:
     expected = tag[1:]
-    # v$pkgver-$pkgrel rebuilds (e.g. overskride) store that same string in
-    # .PKGINFO pkgver. v$pkgver releases compare after dropping Arch pkgrel.
     return package_version == expected or release_version(package_version) == expected
 
 
@@ -142,8 +132,6 @@ def collect(manifest: Path, output: Path) -> dict:
                 }
             )
 
-        # The expected set names packages, not builds: a package present for
-        # several architectures satisfies its entry once.
         actual_names = {name for name, _ in actual_packages}
         if actual_names != expected_packages:
             missing = sorted(expected_packages - actual_names)

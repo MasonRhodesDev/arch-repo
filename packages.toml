@@ -57,8 +57,6 @@ packages = ["bt-stale-bond-guard"]
 repository = "vigil"
 packages = ["vigil", "vigil-debug"]
 
-# The hyprland-git channel, from this repo's own git-builds releases (see
-# git-builds.yml). Version = git describe of hyprwm main.
 [[release]]
 repository = "arch-repo"
 packages = ["hyprland-git"]

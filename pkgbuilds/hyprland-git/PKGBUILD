@@ -1,11 +1,4 @@
 # Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
-#
-# hyprland main, built against extra/'s STABLE hypr* libraries (deps mirror
-# extra/hyprland, not the AUR -git package's full -git lib stack). When main
-# starts requiring an unreleased library the build fails visibly in the
-# git-builds workflow — extend the set then, deliberately.
-#
-# Built exclusively by .github/workflows/git-builds.yml.
 
 pkgname=hyprland-git
 pkgver=0
@@ -45,13 +38,8 @@ build() {
 }
 
 package() {
-  # Versioned provides so 'hyprland>=X' deps resolve against this build.
   provides=("hyprland=${pkgver%%.r*}" "wayland-compositor")
   cd Hyprland
-  # PREFIX has to be repeated here. Upstream's install target re-runs the
-  # cmake configure step, and without PREFIX it reconfigures for /usr/local,
-  # rebuilds, and installs there. /usr/local/share/man then conflicts with
-  # the symlink the filesystem package owns, and the package cannot install.
   make PREFIX=/usr DESTDIR="$pkgdir" install
   rm -f "$pkgdir/usr/include/hyprland/src/version.h.in"
   install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"

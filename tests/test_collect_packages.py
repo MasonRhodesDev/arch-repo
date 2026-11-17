@@ -29,13 +29,6 @@ class RegistryTests(unittest.TestCase):
 
 
 class MultiArchTests(unittest.TestCase):
-    """A release now carries one build per architecture.
-
-    Keying on the package name alone made the second build look like a
-    duplicate, which broke every publish once hyprstate v2.7.4-2 shipped both
-    an x86_64 and an aarch64 package.
-    """
-
     def test_same_package_for_two_architectures_is_not_a_duplicate(self) -> None:
         seen = {}
         for architecture in ("x86_64", "aarch64"):
