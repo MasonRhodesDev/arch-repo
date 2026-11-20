@@ -39,8 +39,10 @@ def release_version(package_version: str) -> str:
     return value.split(":", 1)[-1]
 
 
-def package_matches_tag(package_version: str, tag: str) -> bool:
+def package_matches_tag(package_version: str, tag: str, versioning: str = "pkgver") -> bool:
     expected = tag[1:]
+    if versioning == "pkgrel":
+        return package_version.rsplit("-", 1)[-1] == expected
     return package_version == expected or release_version(package_version) == expected
 
 
@@ -57,6 +59,8 @@ def validate_registry(document: dict) -> None:
         repositories.add(repository)
         if not expected:
             raise RuntimeError(f"{repository} has no expected packages")
+        if release.get("versioning", "pkgver") not in ("pkgver", "pkgrel"):
+            raise RuntimeError(f"{repository} versioning must be pkgver or pkgrel")
         for package in expected:
             if package in packages:
                 raise RuntimeError(f"package {package} has multiple owners")
@@ -117,7 +121,9 @@ def collect(manifest: Path, output: Path) -> dict:
                     f"{repository} {tag} contains duplicate package {package} "
                     f"for {architecture}"
                 )
-            if not package_matches_tag(package_version, tag):
+            if not package_matches_tag(
+                package_version, tag, release.get("versioning", "pkgver")
+            ):
                 raise RuntimeError(
                     f"{path.name} version {package_version} does not match {tag}"
                 )
