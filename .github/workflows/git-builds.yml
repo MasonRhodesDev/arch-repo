@@ -1,12 +1,25 @@
-name: Build hyprland-git channel
+name: Build Hyprland -git stack
 
 on:
-  schedule:
-    - cron: '30 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'pkgbuilds/**'
+      - 'scripts/build_stack.sh'
+      - 'scripts/stack_plan.py'
+      - 'scripts/soname_drift.py'
+      - '.github/workflows/git-builds.yml'
+  pull_request:
+    paths:
+      - 'pkgbuilds/**'
+      - 'scripts/build_stack.sh'
+      - 'scripts/stack_plan.py'
+      - 'scripts/soname_drift.py'
+      - '.github/workflows/git-builds.yml'
   workflow_dispatch:
 
 concurrency:
-  group: git-builds
+  group: git-builds-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -16,82 +29,80 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 300
     container: archlinux:latest@sha256:b0deabeb3d283da2c7f7dbf0eea051b7b2cd0554e0b737cc457fd21683bdcdd1
     steps:
       - name: Install build tooling
-        run: pacman -Syu --noconfirm --needed base-devel git sudo github-cli
+        run: pacman -Syu --noconfirm --needed base-devel git sudo github-cli python
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
       - name: Trust the checkout (container runs as root)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Skip when upstream main has not moved
-        id: gate
+      - name: Choose the release number
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          upstream=$(gh api repos/hyprwm/Hyprland/commits/main --jq .sha | cut -c1-7)
-          last=$(gh release list --repo "$GITHUB_REPOSITORY" \
+          last=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
                    --json tagName --jq '.[].tagName' |
-                 grep -Em1 '^v[0-9].*\.r[0-9]+\.g[0-9a-f]+$' || true)
-          built=""
-          case "$last" in *".g"*) built="${last##*.g}" ;; esac
-          {
-            echo "## hyprland-git channel"
-            echo
-            echo "- upstream main: \`$upstream\`"
-            echo "- last built:    \`${built:-none}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "$built" ] && [ "$built" = "$upstream" ]; then
-            echo "up to date — skipping" >> "$GITHUB_STEP_SUMMARY"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+                 sed -n 's/^v\([0-9][0-9]*\)$/\1/p' | sort -n | tail -n1)
+          echo "number=$(( ${last:-1} + 1 ))" >> "$GITHUB_OUTPUT"
 
       - name: Prepare unprivileged builder
-        if: steps.gate.outputs.skip == 'false'
         run: |
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
-          chown -R builder: "$GITHUB_WORKSPACE"
 
-      - name: Build hyprland-git
-        if: steps.gate.outputs.skip == 'false'
+      - name: Build the stack in dependency order
+        run: bash scripts/build_stack.sh builder "${{ steps.release.outputs.number }}" dist
+
+      - name: Every linked soname resolves against the current Arch repos
         run: |
-          cd pkgbuilds/hyprland-git
-          su builder -c 'makepkg -s --noconfirm'
+          pacman -Fy --noconfirm
+          python scripts/soname_drift.py dist/*/*.pkg.tar.zst | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash
 
-      - name: Install hyprland-git into the build root
-        if: steps.gate.outputs.skip == 'false'
-        run: pacman -U --noconfirm pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        if: github.ref != 'refs/heads/main'
+        with:
+          name: hypr-stack
+          path: dist/*/*.pkg.tar.zst
+          retention-days: 7
+          if-no-files-found: error
 
-      - name: Publish release and prune old git releases
-        if: steps.gate.outputs.skip == 'false'
+      - name: Publish release and prune old stack releases
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ steps.release.outputs.number }}
         run: |
           set -euo pipefail
-          version=$(pacman -Q hyprland-git | cut -d' ' -f2 | cut -d- -f1)
-          tag="v$version"
-          commit="${version##*.g}"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
-            --title "hyprland-git $version" \
-            --notes "hyprland-git built from hyprwm/Hyprland@$commit against extra/'s stable hypr* libraries." \
-            pkgbuilds/hyprland-git/hyprland-git-*.pkg.tar.zst
-          gh release list --repo "$GITHUB_REPOSITORY" \
-            --json tagName --jq '.[].tagName' |
-            grep -E '^v[0-9].*\.r[0-9]+\.g[0-9a-f]+$' | tail -n +4 |
-            while read -r old; do
-              gh release delete "$old" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
-            done
+          tag="v$NUMBER"
           {
-            echo "published \`$tag\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo "Hyprland -git stack built from $GITHUB_REPOSITORY@$GITHUB_SHA at pinned upstream commits."
+            echo
+            for package in dist/*/*.pkg.tar.zst; do
+              echo "- \`$(basename "$package")\`"
+            done
+          } > notes.md
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --latest --title "Hyprland -git stack $NUMBER" --notes-file notes.md \
+            dist/*/*.pkg.tar.zst
+          tags=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+                   --json tagName --jq '.[].tagName')
+          {
+            sed -n 's/^v\([0-9][0-9]*\)$/\1/p' <<<"$tags" | sort -rn | tail -n +4 | sed 's/^/v/'
+            grep -E '^v[0-9].*\.r[0-9]+\.g[0-9a-f]+$' <<<"$tags" || true
+          } | while read -r old; do
+            gh release delete "$old" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          done
+          echo "published \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
 
       - name: Kick pacman-repo publish
-        if: steps.gate.outputs.skip == 'false'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run publish.yml --repo "$GITHUB_REPOSITORY"

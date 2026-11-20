@@ -59,4 +59,34 @@ packages = ["vigil", "vigil-debug"]
 
 [[release]]
 repository = "arch-repo"
-packages = ["hyprland-git"]
+versioning = "pkgrel"
+packages = [
+  "aquamarine-git",
+  "gamemode-git",
+  "hyprcursor-git",
+  "hyprgraphics-git",
+  "hypridle-git",
+  "hyprland-git",
+  "hyprland-guiutils-git",
+  "hyprland-protocols-git",
+  "hyprland-qt-support-git",
+  "hyprlang-git",
+  "hyprlauncher-git",
+  "hyprlock-git",
+  "hyprls-git",
+  "hyprpaper-git",
+  "hyprpicker-git",
+  "hyprpolkitagent-git",
+  "hyprpwcenter-git",
+  "hyprqt6engine-git",
+  "hyprshutdown-git",
+  "hyprsunset-git",
+  "hyprsysteminfo-git",
+  "hyprtoolkit-git",
+  "hyprutils-git",
+  "hyprwayland-scanner-git",
+  "hyprwire-git",
+  "matugen-bin",
+  "udis86-git",
+  "xdg-desktop-portal-hyprland-git",
+]

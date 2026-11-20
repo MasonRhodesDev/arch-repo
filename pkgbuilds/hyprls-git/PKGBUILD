@@ -1,0 +1,42 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+
+pkgname=hyprls-git
+_commit=3f385b35e1108d0ef0275b23066ba3ead45a60b5
+pkgver=0
+pkgrel=1
+pkgdesc="A LSP server for Hyprland config files"
+arch=('x86_64')
+url="https://github.com/hyprland-community/hyprls"
+license=('MIT')
+depends=(glibc)
+makedepends=(git go just)
+optdepends=('hyprland')
+provides=("hyprls=${pkgver%%.r*}")
+conflicts=(hyprls)
+options=('!debug')
+source=("git+$url.git#commit=$_commit" "git+https://github.com/hyprwm/hyprland-wiki.git")
+sha256sums=('SKIP' 'SKIP')
+
+pkgver() {
+  cd hyprls
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd hyprls
+  git submodule init
+  git config submodule.hyprland-wiki.url "$srcdir/hyprland-wiki"
+  git -c protocol.file.allow=always submodule update
+}
+
+build() {
+  cd hyprls
+  export CGO_CPPFLAGS="$CPPFLAGS" CGO_CFLAGS="$CFLAGS" CGO_CXXFLAGS="$CXXFLAGS" CGO_LDFLAGS="$LDFLAGS"
+  export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+  just build
+}
+
+package() {
+  install -Dm755 hyprls/hyprls "$pkgdir/usr/bin/hyprls"
+  install -Dm644 hyprls/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

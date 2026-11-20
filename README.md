@@ -46,20 +46,31 @@ The same repo works with deck-tenant's rootless pacman root — add the same
 `pacman --root ~/.local/share/deck-pkgs` and update from there. No more
 building in distrobox on the Deck.
 
-## hyprland-git channel
+## Hyprland -git stack
 
-`git-builds.yml` builds **hyprland-git** every 6 hours (skipping when
-hyprwm/Hyprland main hasn't moved): upstream main against extra/'s stable
-hypr* libraries. When main starts needing an unreleased library the build
-fails visibly; extend `pkgbuilds/hyprland-git` then. The job installs the
-package into its build root before publishing, so a package that cannot
-install never ships. It is published as a `v<pkgver>` release on this repo,
-`packages.toml` tracks it like any other project, and old git releases are
-pruned to the newest 3. Install with `pacman -S hyprland-git`.
+`pkgbuilds/` holds the Hyprland -git stack: hyprland-git, the hypr* libraries
+and tools it is used with, xdg-desktop-portal-hyprland-git, gamemode-git and
+matugen-bin. Each PKGBUILD pins an upstream commit in `_commit`; bump a pin by
+editing it in a pull request, which builds the whole stack before merge.
 
-The workspace-zones plugin used to be built here in lockstep as
-`hyprland-workspace-zones-git`. waybar-workspace-buttons 1.5.0 retired the
-plugin (zones are Lua config), and that package replaces it.
+`git-builds.yml` builds every package in dependency order in one job.
+`scripts/stack_plan.py` derives the order from the PKGBUILDs, and
+`scripts/build_stack.sh` installs only a package's declared stack
+dependencies before building it. On main the result is published as one
+`v<N>` release in which every package has pkgrel N, so each rebuild upgrades
+the whole stack together. `packages.toml` tracks that release with
+`versioning = "pkgrel"`, and older stack releases are pruned to the newest 3.
+
+`soname-check.yml` runs every 6 hours. `scripts/soname_drift.py` reads the
+NEEDED entries of the published packages and looks each library up in the
+current Arch files database. When one is gone (for example after a libjxl
+soname bump) it starts `git-builds.yml`, which rebuilds the stack at the same
+pins against the new library. The build runs the same check on its own output
+and does not publish while anything is still missing.
+
+Build it locally in an Arch container or chroot with
+`bash scripts/build_stack.sh <unprivileged-user> <pkgrel> <output-dir>` as
+root.
 
 ## Refresh cadence
 

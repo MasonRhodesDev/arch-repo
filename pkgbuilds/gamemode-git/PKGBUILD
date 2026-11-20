@@ -1,0 +1,31 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+
+pkgname=gamemode-git
+_commit=af07e169d58b574fac2a093296aa37605313bb2b
+pkgver=0
+pkgrel=1
+pkgdesc="A daemon/lib combo that allows games to request a set of optimisations be temporarily applied to the host OS"
+arch=('x86_64')
+url="https://github.com/FeralInteractive/gamemode"
+license=('BSD-3-Clause')
+depends=(bash dbus glibc libgcc libinih polkit systemd-libs)
+makedepends=(git meson)
+provides=(gamemode libgamemode.so libgamemodeauto.so)
+conflicts=(gamemode)
+options=('!debug')
+source=("gamemode::git+$url.git#commit=$_commit")
+sha256sums=('SKIP')
+
+pkgver() {
+  git -C gamemode describe --long --tags | tr - . | tr -d v
+}
+
+build() {
+  arch-meson gamemode build --libexecdir /usr/lib/gamemode -Dwith-examples=false
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  install -Dm644 gamemode/LICENSE.txt -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

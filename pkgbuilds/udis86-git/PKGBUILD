@@ -1,0 +1,40 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+
+pkgname=udis86-git
+_commit=5336633af70f3917760a6d441ff02d93477b0c86
+pkgver=0
+pkgrel=1
+pkgdesc="Minimalistic disassembler library"
+arch=('x86_64')
+url="https://github.com/canihavesomecoffee/udis86"
+license=('BSD-2-Clause')
+depends=(glibc)
+makedepends=(git python python-sphinx)
+provides=("udis86=${pkgver%%.r*}" libudis86.so)
+conflicts=(udis86)
+options=('!debug')
+source=("udis86::git+$url.git#commit=$_commit")
+sha256sums=('SKIP')
+
+pkgver() {
+  git -C udis86 describe --long --tags | sed 's/^v//;s/-/.r/;s/-/./'
+}
+
+prepare() {
+  cd udis86
+  ./autogen.sh
+}
+
+build() {
+  cd udis86
+  ./configure --prefix=/usr --with-python=/usr/bin/python --enable-shared
+  make
+  sphinx-build -b man docs/manual docs/_build/man
+}
+
+package() {
+  cd udis86
+  make DESTDIR="$pkgdir" install
+  install -Dm644 docs/_build/man/udis86.1 -t "$pkgdir/usr/share/man/man1/"
+  install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}
