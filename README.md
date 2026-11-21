@@ -68,9 +68,9 @@ soname bump) it starts `git-builds.yml`, which rebuilds the stack at the same
 pins against the new library. The build runs the same check on its own output
 and does not publish while anything is still missing.
 
-Build it locally in an Arch container or chroot with
-`bash scripts/build_stack.sh <unprivileged-user> <pkgrel> <output-dir>` as
-root.
+Build it locally as root in an Arch container with `base-devel`, `git` and
+`python` installed and an unprivileged user that has passwordless sudo:
+`bash scripts/build_stack.sh <user> <pkgrel> <empty-output-dir>`.
 
 ## Refresh cadence
 

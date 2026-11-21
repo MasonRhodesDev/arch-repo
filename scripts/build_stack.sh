@@ -33,7 +33,7 @@ while read -r -u 3 directory requirements; do
   fi
   mkdir -p "$out/$directory"
   chown "$builder": "$out/$directory"
-  su "$builder" -c "cd '$work/$directory' && makepkg -od --noconfirm"
+  su "$builder" -c "cd '$work/$directory' && makepkg -os --noconfirm"
   sed -i "s/^pkgrel=.*/pkgrel=$pkgrel/" "$work/$directory/PKGBUILD"
   su "$builder" -c "cd '$work/$directory' && PKGDEST='$out/$directory' PKGEXT=.pkg.tar.zst makepkg -se --noconfirm"
   ls "$out/$directory"/*.pkg.tar.zst
