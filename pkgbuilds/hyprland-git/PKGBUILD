@@ -1,25 +1,26 @@
 # Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
 
 pkgname=hyprland-git
+_commit=9927f2eb87beae7f2cc623567eeb0ffa56842aca
 pkgver=0
 pkgrel=1
-pkgdesc="Hyprland compositor built from upstream main (lockstep [mason] git channel)"
+pkgdesc="Hyprland compositor built from a pinned upstream commit ([mason] -git stack)"
 arch=('x86_64')
 url="https://github.com/hyprwm/Hyprland"
 license=('BSD-3-Clause')
-depends=(aquamarine cairo gcc-libs glib2 glibc glslang hyprcursor hyprgraphics
-         hyprland-guiutils hyprlang hyprutils hyprwayland-scanner hyprwire
-         lcms2 libcanberra libdisplay-info libdrm libglvnd libinput libliftoff
+depends=(aquamarine-git cairo gcc-libs glib2 glibc glslang hyprcursor-git hyprgraphics-git
+         hyprland-guiutils-git hyprlang-git hyprutils-git hyprwire-git
+         lcms2 libcanberra libdisplay-info libdrm libei libglvnd libinput libliftoff
          libx11 libxcb libxcomposite libxcursor libxfixes libxkbcommon
          libxrender lua mesa muparser opengl-driver pango pixman polkit re2
-         sdbus-cpp seatd systemd-libs tomlplusplus util-linux-libs wayland
+         readline sdbus-cpp seatd systemd-libs tomlplusplus util-linux-libs wayland
          wayland-protocols xcb-proto xcb-util xcb-util-errors xcb-util-image
          xcb-util-keysyms xcb-util-renderutil xcb-util-wm xorg-xwayland)
-makedepends=('cmake' 'git' 'glaze' 'hyprland-protocols' 'meson' 'ninja' 'xorgproto')
+makedepends=('cmake' 'git' 'glaze' 'hyprland-protocols-git' 'hyprwayland-scanner-git' 'meson' 'ninja' 'xorgproto')
 provides=("hyprland" "wayland-compositor")
 conflicts=('hyprland')
 options=('!debug')
-source=("git+$url.git")
+source=("git+$url.git#commit=$_commit")
 sha256sums=('SKIP')
 
 pkgver() {

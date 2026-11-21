@@ -1,0 +1,43 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+
+_pkgname=hyprlock
+pkgname=$_pkgname-git
+_commit=d09ac07189cbf600c6039778757de0dded9e2350
+pkgver=0
+pkgrel=1
+pkgdesc="Hyprland's GPU-accelerated screen locking utility"
+arch=('x86_64')
+url="https://github.com/hyprwm/$_pkgname"
+license=('BSD-3-Clause')
+depends=(cairo gcc-libs glibc hyprgraphics-git hyprlang-git hyprutils-git libdrm libglvnd libxkbcommon mesa pam pango sdbus-cpp wayland)
+makedepends=(cmake git hyprwayland-scanner-git ninja wayland-protocols)
+provides=("$_pkgname=${pkgver%%.r*}")
+conflicts=("$_pkgname")
+backup=('etc/pam.d/hyprlock')
+options=('!debug')
+_pkgsrc=$_pkgname
+source=("$_pkgsrc::git+$url.git#commit=$_commit")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgsrc"
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/-\([0-9]*\)-g/.r\1.g/'
+}
+
+build() {
+  local cmake_options=(
+    -B build
+    -S "$_pkgsrc"
+    -G Ninja
+    -W no-dev
+    -D CMAKE_BUILD_TYPE=None
+    -D CMAKE_INSTALL_PREFIX=/usr
+  )
+  cmake "${cmake_options[@]}"
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 "$_pkgsrc/LICENSE" -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

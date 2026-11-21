@@ -1,0 +1,64 @@
+name: Check Hyprland -git stack sonames
+
+on:
+  schedule:
+    - cron: '15 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container: archlinux:latest@sha256:b0deabeb3d283da2c7f7dbf0eea051b7b2cd0554e0b737cc457fd21683bdcdd1
+    steps:
+      - name: Install tooling and sync the files database
+        run: |
+          pacman -Syu --noconfirm --needed binutils github-cli libarchive python
+          pacman -Fy --noconfirm
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Download the published stack
+        id: stack
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          number=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+                     --json tagName --jq '.[].tagName' |
+                   sed -n 's/^v\([0-9][0-9]*\)$/\1/p' | sort -n | tail -n1)
+          if [ -z "$number" ]; then
+            echo "no stack release published yet" >> "$GITHUB_STEP_SUMMARY"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh release download "v$number" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.pkg.tar.zst' --dir stack
+          echo "tag=v$number" >> "$GITHUB_OUTPUT"
+
+      - name: Compare NEEDED sonames with the current repos
+        id: drift
+        if: steps.stack.outputs.tag != ''
+        run: |
+          set +e
+          echo "## ${{ steps.stack.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          python scripts/soname_drift.py stack/*.pkg.tar.zst | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          set -e
+          case $status in
+            0) echo "drift=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "drift=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
+
+      - name: Rebuild the stack against the current repos
+        if: steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run git-builds.yml --repo "$GITHUB_REPOSITORY" --ref main

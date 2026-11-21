@@ -1,0 +1,45 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+
+_pkgname=hyprlauncher
+pkgname=$_pkgname-git
+_commit=b8869f0f717b742531d86e95fd999fdf6d846f50
+pkgver=0
+pkgrel=1
+pkgdesc="Multipurpose and versatile launcher / picker for Hyprland"
+arch=('x86_64')
+url="https://github.com/hyprwm/$_pkgname"
+license=('BSD-3-Clause')
+depends=(fontconfig gcc-libs glibc hyprlang-git hyprtoolkit-git hyprutils-git hyprwire-git icu libdrm libqalculate pixman)
+makedepends=(cmake git ninja)
+optdepends=(
+  'wl-clipboard: Copy certain search results to the clipboard'
+)
+provides=("$_pkgname=${pkgver%%.r*}")
+conflicts=("$_pkgname")
+options=('!debug')
+_pkgsrc=$_pkgname
+source=("$_pkgsrc::git+$url.git#commit=$_commit")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgsrc"
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/-\([0-9]*\)-g/.r\1.g/'
+}
+
+build() {
+  local cmake_options=(
+    -B build
+    -S "$_pkgsrc"
+    -G Ninja
+    -W no-dev
+    -D CMAKE_BUILD_TYPE=None
+    -D CMAKE_INSTALL_PREFIX=/usr
+  )
+  cmake "${cmake_options[@]}"
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 "$_pkgsrc/LICENSE" -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

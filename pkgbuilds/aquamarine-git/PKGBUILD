@@ -1,0 +1,42 @@
+# Maintainer: Mason Rhodes <mrhodesdev@gmail.com>
+
+_pkgname=aquamarine
+pkgname=$_pkgname-git
+_commit=7c1c55b2a76ddb9f6602f8c0886ecf1b899529f9
+pkgver=0
+pkgrel=1
+pkgdesc="Aquamarine is a very light linux rendering backend library"
+arch=('x86_64')
+url="https://github.com/hyprwm/$_pkgname"
+license=('BSD-3-Clause')
+depends=(gcc-libs glibc hyprutils-git libdisplay-info libdrm libglvnd libinput mesa opengl-driver pixman pugixml seatd systemd-libs wayland wayland-protocols)
+makedepends=(cmake git hyprwayland-scanner-git ninja)
+provides=("$_pkgname=${pkgver%%.r*}" "lib$_pkgname.so")
+conflicts=("$_pkgname")
+options=('!debug')
+_pkgsrc=$_pkgname
+source=("$_pkgsrc::git+$url.git#commit=$_commit")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgsrc"
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/-\([0-9]*\)-g/.r\1.g/'
+}
+
+build() {
+  local cmake_options=(
+    -B build
+    -S "$_pkgsrc"
+    -G Ninja
+    -W no-dev
+    -D CMAKE_BUILD_TYPE=None
+    -D CMAKE_INSTALL_PREFIX=/usr
+  )
+  cmake "${cmake_options[@]}"
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 "$_pkgsrc/LICENSE" -t "$pkgdir/usr/share/licenses/$pkgname/"
+}
